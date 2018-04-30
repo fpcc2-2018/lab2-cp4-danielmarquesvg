@@ -1,0 +1,94 @@
+---
+title: "R Notebook - Lab 2 - CP 4"
+output:
+  html_document:
+    df_print: paged
+---
+
+#### 1) Descrição da Atividade
+
+Tendo feito uma análise inicial no lab 1 e revisado como comunicar resultados de análises nos lab1 e 2, agora é hora de praticar tudo junto com uma análise completa saindo (quase) do zero. 
+
+Usaremos um problema de exploração de dados que a Wikimedia Foundation usou em 2016 para recrutar pessoas para trabalhar no departamento de descoberta deles. Sua missão é seguir as instruções colocadas na tarefa original, respondendo as 4 perguntas que são colocadas lá.
+
+Assim como no lab1, preparamos um repositório no github para que você use como pontapé inicial no seu trabalho. Seu trabalho deve partir dele, e sua entrega consistirá de uma versão modificada desse repositório com um link para o seu relatório final no início do README.md do seu repositório. 
+
+Para que vocês acessem o repositório inicial e nós possamos acessar o resultado de seu trabalho, usaremos o github classroom. Vá em <a href="https://classroom.github.com/a/iKL_Kogu">https://classroom.github.com/a/iKL_Kogu</a> e siga as instruções. 
+
+Alguns comentários relevantes: 
+
+1. O erro mais comum reportado pelo pessoal da wikimedia é que analistas respondiam as perguntas sem antes explorar os dados, e aí cometiam erros crassos que teriam evitado se tivessem primeiro entendido os dados.
+2. É bastante dado, e o preprocessamento dele pode demorar na sua máquina. Se isso começar a atrapalhar, faça um head(100000) nos eventos, e considere só os n primeiros. Não tem problema. 
+3. O script atual de preprocessamento dos dados é um início que você pode modificar à vontade.
+
+</br>
+
+#### 2) Bibliotecas e Dados
+
+```{r}
+library(tidyverse)
+library(here)
+library(lubridate)
+```
+
+As variáveis utilizadas serão:
+
+1. <b>session_id</b>: Identificador exclusivo de cada sessão
+2. <b>session_index</b>: Quantidade de buscas em uma mesma sessão
+3. <b>session_time</b>: Duração de cada sessão em segundos
+4. <b>session_start_time</b>: Timestamp inicial da sessão
+5. <b>session_start_date</b>: Data e hora do início da sessão
+6. <b>group</b>: Rótulo para dividir em grupo a ou grupo b
+7. <b>results</b>: Quantidade de resultados de uma busca
+8. <b>num_clicks</b>: Quantidade de páginas abertas pelo usuário
+5. <b>first_click</b>: posição da página visitada
+
+
+```{r}
+projeto = read_csv(here::here("data/search_data2.csv"))
+```
+
+Algumas observações a serem feitas é que não queremos dados onde o <b>first_click</b> esteja sem informação, isto é, <i>NA</i>. Também não queremos que a quantidade de resultados seja menor que o first_click, pois algo estaria errado. Então, filtramos os dados 
+
+```{r}
+projetos = projeto %>%
+    filter((results >= first_click) | (is.na(first_click) == FALSE))
+
+select(projetos, session_id, search_index, session_time, session_start_timestamp, session_start_date, group, results, num_clicks, first_click)
+
+```
+
+
+
+
+
+</br>
+
+#### 3) Analisando os dados
+
+```{r}
+projeto %>%
+    ggplot(aes(x = group, y = num_clicks, fill=group)) + 
+    geom_col()
+```
+
+
+
+
+</br>
+
+#### 4) Perguntas do Relatório
+
+a. Qual é a nossa taxa de cliques geral diária? Como isso varia entre os grupos?
+b. Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
+c. Qual é a nossa taxa de resultados zero no geral? Como isso varia entre os grupos?
+d. A duração da sessão é aproximadamente o tempo entre o primeiro e o último evento de uma sessão. Escolha uma variável do conjunto de dados e descreva sua relação com o tamanho da sessão. Visualize o relacionamento.
+
+</br>
+
+##### 4.1) Qual é a nossa taxa de cliques geral diária? Como isso varia entre os grupos?
+
+
+
+
+
