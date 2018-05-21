@@ -1,0 +1,247 @@
+---
+title: "R Notebook - Lab 3 - CP 1"
+output: html_notebook
+---
+
+#### 1) Descrição da Atividade
+
+De fato, os dados de acesso a projetos da wikimedia que utilizamos no problema 2 são dados de uma amostra dos usuários, e não da população.
+
+Sabendo disso, produza uma versão resumida do relatório que você fez para o Lab 2, CP 4, que:
+
+1. responde as 3 primeiras perguntas da tarefa original utilizando inferência estatística realizada através de intervalos de confiança e bootstrap.
+
+2. testa o que acontece se para a pergunta 1, em vez de comparar o grupo A com o grupo B (um teste A/B), você compara metade das sessões do grupo A (escolhida aleatoriamente) com outra metade das sessões do mesmo grupo (um teste A/A).
+
+Ressalte em seu relatório a conclusão possível sobre a população que você está fazendo a partir da inferência.  Lembre de escrever uma frase com o vocabulário do domínio do problema explicando seu achado, e de formalizá-la em nível de confiança. Comente tanto significância (estatística) quanto relevância prática de diferenças que você venha a encontrar.
+
+
+</br>
+
+#### 2) Bibliotecas e Dados
+
+```{r}
+library(tidyverse)
+library(here)
+library(lubridate)
+library(ggplot2)
+library(boot)
+```
+
+As variáveis utilizadas serão:
+
+1. <b>session_id</b>: Identificador exclusivo de cada sessão
+2. <b>search_index</b>: Quantidade de buscas em uma mesma sessão
+3. <b>session_duracao</b>: Duração de cada sessão em segundos
+4. <b>session_data</b>: Data da sessão no formato ano-mes-dia
+4. <b>session_start_time</b>: Timestamp inicial da sessão
+5. <b>session_start_date</b>: Data e hora do início da sessão
+6. <b>group</b>: Rótulo para dividir em grupo a ou grupo b
+7. <b>results</b>: Quantidade de resultados de uma busca
+8. <b>num_clicks</b>: Quantidade de páginas abertas pelo usuário
+9. <b>first_click</b>: posição da página visitada
+
+Uma observação a ser feita, que este dataset foi gerado atráves da função head(100000) do arquivo original
+```{r}
+projeto = read_csv(here::here("/data/search_data3.csv"))
+```
+
+
+```{r}
+select(projeto, session_id, search_index, session_duracao, session_data, session_start_timestamp, session_start_date, group, results, num_clicks, first_click)
+```
+
+</br>
+
+#### 3) Analisando os dados
+
+```{r}
+projeto %>%
+    ggplot(aes(x = group, fill = group)) +
+    geom_bar() +
+    geom_rug() +
+    labs(xlab("Grupo"), ylab("Quantidade de buscas realizadas"))
+```
+
+
+
+```{r}
+projeto %>%
+    ggplot(aes(x = session_data, fill = group)) +
+    geom_bar() +
+    geom_rug() +
+    labs(xlab("Data de realização da busca"), ylab("Quantidade de buscas realizadas"))
+```
+
+
+
+```{r}
+projeto %>%
+    ggplot(aes(x = num_clicks, fill = group)) +
+    geom_bar() +
+    geom_rug()
+```
+
+
+```{r}
+projeto %>%
+    ggplot(aes(x = results, fill = group)) +
+    geom_bar() +
+    geom_rug()
+```
+
+
+</br>
+
+#### 4) Perguntas do Relatório
+
+1. responde as 3 primeiras perguntas da tarefa original utilizando inferência estatística realizada através de intervalos de confiança e bootstrap.
+
+2. testa o que acontece se para a pergunta 1, em vez de comparar o grupo A com o grupo B (um teste A/B), você compara metade das sessões do grupo A (escolhida aleatoriamente) com outra metade das sessões do mesmo grupo (um teste A/A).
+
+</br>
+
+##### 4.1) Qual é a nossa taxa de cliques geral diária? Como isso varia entre os grupos?
+
+
+```{r}
+projeto %>%
+    ggplot(aes(x = session_data, y = num_clicks)) + 
+    geom_col(position = "dodge") +
+    geom_rug()
+```
+
+```{r}
+total_buscas = projeto %>% 
+    group_by(session_data, group) %>% 
+    summarise(n = n(), taxa = ((sum(num_clicks))/n)*100) 
+
+total_buscas%>%
+    ggplot(aes(x = session_data, y = taxa)) + 
+    geom_col(position = "dodge") +
+    labs(title="Taxa de cliques diária geral",
+         x="Data", 
+         y="Taxa de cliques (%)")
+
+total_buscas%>%
+    ggplot(aes(x = session_data, y = taxa, fill = group)) + 
+    geom_col(position = "dodge") +
+    labs(title="Taxa de cliques diária por grupo",
+         x="Data", 
+         y="Taxa de cliques (%)")
+```
+
+
+```{r}
+funcao_num_clicks <- function(dados, indices) {
+    mean_num_clicks <- dados %>% 
+        slice(indices) %>%
+        group_by(session_data) %>%
+        summarise( n = n(), taxa = (sum(num_clicks)/n)*100) %>%
+        pull(taxa) %>%
+        mean()
+    return(mean_num_clicks)
+}
+
+bootstrap_num_clicks <- boot(data = projeto, statistic = funcao_num_clicks, R = 1000)
+
+boot.ci(boot.out = bootstrap_num_clicks, conf = 0.95, type = "basic")
+
+```
+
+
+</br>
+
+##### 4.2) Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
+
+```{r}
+projeto %>%
+    ggplot(aes(x = first_click)) + 
+    geom_bar() +
+    geom_rug() +
+    scale_y_log10()
+```
+
+
+```{r}
+funcao_first_click <- function(dados, indices) {
+    mean_first_click <- dados %>%
+        filter(!is.na(first_click)) %>%
+        slice(indices) %>%
+        pull(first_click) %>%
+        mean()
+    
+    return(mean_first_click)
+}
+
+bootstrap_first_click <- boot(data = projeto, statistic = funcao_first_click, R = 1000)
+
+boot.ci(boot.out = bootstrap_first_click, conf = 0.95, type = "basic")
+
+```
+
+</br>
+
+##### 4.3) Qual é a nossa taxa de resultados zero no geral? Como isso varia entre os grupos?
+
+```{r}
+
+total_results_porGrupo = projeto %>%
+    group_by(group, results) %>%
+    summarise(n = n()) %>%
+    mutate(taxaDeResultado = n / sum(n) * 100)
+
+total_results_porGrupo %>%
+    filter(results == 0) %>%
+    ggplot(aes(x = group, y = taxaDeResultado, fill = group)) + 
+    geom_col(width = .5)
+    
+```
+
+
+```{r}
+funcao_results_zero <- function(dados, indices) {
+    taxa_results_zero <- dados %>%
+        slice(indices) %>%
+        group_by(group, results) %>%
+        summarise(n = n()) %>%
+        mutate(taxaDeResultado = n / sum(n) * 100) %>%
+        filter(results == 0) %>%
+        pull(taxaDeResultado)
+    
+    return(taxa_results_zero)
+}
+
+bootstrap_results_zero <- boot(data = projeto, statistic = funcao_results_zero, R = 1000)
+
+boot.ci(boot.out = bootstrap_results_zero, conf = 0.95, type = "basic")
+
+```
+
+#### testa o que acontece se para a pergunta 1, em vez de comparar o grupo A com o grupo B (um teste A/B), você compara metade das sessões do grupo A (escolhida aleatoriamente) com outra metade das sessões do mesmo grupo (um teste A/A).
+
+```{r}
+grupoA = projeto %>%
+    filter(group == "a")
+
+amostra1_grupoA = sample_n(grupoA, nrow(grupoA)/2)
+amostra2_grupoA = sample_n(grupoA, nrow(grupoA)/2)
+
+amostra_grupoA = bind_rows(amostra1_grupoA, amostra2_grupoA)
+
+funcao_num_clicks <- function(dados, indices) {
+    mean_num_clicks <- dados %>% 
+        slice(indices) %>%
+        group_by(session_data) %>%
+        summarise( n = n(), taxa = (sum(num_clicks)/n)*100) %>%
+        pull(taxa) %>%
+        mean()
+    return(mean_num_clicks)
+}
+
+bootstrap_num_clicks <- boot(data = amostra_grupoA, statistic = funcao_num_clicks, R = 1000)
+
+boot.ci(boot.out = bootstrap_num_clicks, conf = 0.95, type = "basic")
+
+```
+
