@@ -1,6 +1,8 @@
 ---
 title: "R Notebook - Lab 3 - CP 1"
-output: html_notebook
+output:
+  html_document:
+    df_print: paged
 ---
 
 #### 1) Descrição da Atividade
@@ -41,7 +43,8 @@ As variáveis utilizadas serão:
 8. <b>num_clicks</b>: Quantidade de páginas abertas pelo usuário
 9. <b>first_click</b>: posição da página visitada
 
-Uma observação a ser feita, que este dataset foi gerado atráves da função head(100000) do arquivo original
+Uma observação a ser feita, que este dataset foi gerado atráves da função head(100000) do arquivo original, sendo assim, não estão inclusos todos os dados, caso perceba-se alguma diferença nos dados aqui utilizados.
+
 ```{r}
 projeto = read_csv(here::here("/data/search_data3.csv"))
 ```
@@ -55,6 +58,8 @@ select(projeto, session_id, search_index, session_duracao, session_data, session
 
 #### 3) Analisando os dados
 
+É notório que o grupo A realizou possui mais sessões realizadas que o grupo B, tendo o grupo A um tamanho duas vezes maior que o grupo B.
+
 ```{r}
 projeto %>%
     ggplot(aes(x = group, fill = group)) +
@@ -63,7 +68,7 @@ projeto %>%
     labs(xlab("Grupo"), ylab("Quantidade de buscas realizadas"))
 ```
 
-
+Em relação aos dias da semana, tanto o grupo A, como o grupo B, seguiram uma tendência muito parecida. O número de sessões foi crescendo nos três primeiros dias (01 de março à 03 de março). Nos dias 04 e 05 de Março, houve uma tendência decrescente na quantidade de sessões, mas logo em seguida, nos dias 06 e 07, houve novamente uma crescente nas sessões. Que por fim, decresceram novamente no último dia.
 
 ```{r}
 projeto %>%
@@ -73,13 +78,14 @@ projeto %>%
     labs(xlab("Data de realização da busca"), ylab("Quantidade de buscas realizadas"))
 ```
 
-
+Os usuários tendem a clicar somente uma única vez, sendo assim, aberta a primeira página em uma grande maioria das vezes. Menos da metade clicam uma segunda vez, abrindo assim a segunda página; e em raríssimos casos, os usuários clicam 3 ou mais vezes.
 
 ```{r}
 projeto %>%
     ggplot(aes(x = num_clicks, fill = group)) +
     geom_bar() +
-    geom_rug()
+    geom_rug() +
+    labs(xlab("num_clicks - páginas abertas"), ylab("quantidade"))
 ```
 
 
@@ -87,7 +93,8 @@ projeto %>%
 projeto %>%
     ggplot(aes(x = results, fill = group)) +
     geom_bar() +
-    geom_rug()
+    geom_rug() +
+    labs(xlab("resultados de uma busca"), ylab("Quantidade"))
 ```
 
 
@@ -103,28 +110,22 @@ projeto %>%
 
 ##### 4.1) Qual é a nossa taxa de cliques geral diária? Como isso varia entre os grupos?
 
-
-```{r}
-projeto %>%
-    ggplot(aes(x = session_data, y = num_clicks)) + 
-    geom_col(position = "dodge") +
-    geom_rug()
-```
+A taxa média de cliques geral diária, pelo gráfico, fica entre o intervalo de 30% e 40%. Já por grupos, a taxa do grupo A é maior que a taxa do grupo B, tendo o grupo A uma taxa geral diária de cliques entre 40% e 30%, já o grupo B, com uma taxa geral diária variando entre 10% e 18%
 
 ```{r}
 total_buscas = projeto %>% 
     group_by(session_data, group) %>% 
-    summarise(n = n(), taxa = ((sum(num_clicks))/n)*100) 
+    summarise(n = n(), taxa_num_clicks = ((sum(num_clicks))/n)*100) 
 
 total_buscas%>%
-    ggplot(aes(x = session_data, y = taxa)) + 
+    ggplot(aes(x = session_data, y = taxa_num_clicks)) + 
     geom_col(position = "dodge") +
     labs(title="Taxa de cliques diária geral",
          x="Data", 
          y="Taxa de cliques (%)")
 
 total_buscas%>%
-    ggplot(aes(x = session_data, y = taxa, fill = group)) + 
+    ggplot(aes(x = session_data, y = taxa_num_clicks, fill = group)) + 
     geom_col(position = "dodge") +
     labs(title="Taxa de cliques diária por grupo",
          x="Data", 
@@ -137,28 +138,32 @@ funcao_num_clicks <- function(dados, indices) {
     mean_num_clicks <- dados %>% 
         slice(indices) %>%
         group_by(session_data) %>%
-        summarise( n = n(), taxa = (sum(num_clicks)/n)*100) %>%
-        pull(taxa) %>%
+        summarise( n = n(), taxa_num_clicks = (sum(num_clicks)/n)*100) %>%
+        pull(taxa_num_clicks) %>%
         mean()
     return(mean_num_clicks)
 }
 
-bootstrap_num_clicks <- boot(data = projeto, statistic = funcao_num_clicks, R = 1000)
+bootstrap_num_clicks <- boot(data = projeto, statistic = funcao_num_clicks, R = 2000)
 
 boot.ci(boot.out = bootstrap_num_clicks, conf = 0.95, type = "basic")
 
 ```
 
+A partir dos dados acima, podemos concluir que média geral da taxa de clicks está entre 28,46% e 29,24% com 95% de confiança.
 
 </br>
 
 ##### 4.2) Quais resultados as pessoas tendem a tentar primeiro? Como isso muda no dia-a-dia?
+
+As pessoas tendem a clicar nos primeiros 100 primeiros resultados, tendo uma tendência assimétrica a esquerda.
 
 ```{r}
 projeto %>%
     ggplot(aes(x = first_click)) + 
     geom_bar() +
     geom_rug() +
+    labs(xlab("first_click - posição da primeira página aberta"), ylab("Quantidade")) +
     scale_y_log10()
 ```
 
@@ -174,15 +179,19 @@ funcao_first_click <- function(dados, indices) {
     return(mean_first_click)
 }
 
-bootstrap_first_click <- boot(data = projeto, statistic = funcao_first_click, R = 1000)
+bootstrap_first_click <- boot(data = projeto, statistic = funcao_first_click, R = 2000)
 
 boot.ci(boot.out = bootstrap_first_click, conf = 0.95, type = "basic")
 
 ```
 
+Com isso, podemos concluir, com 95% de confiança, que a posição da primeira página clicada está entre 3 e 5.
+
 </br>
 
 ##### 4.3) Qual é a nossa taxa de resultados zero no geral? Como isso varia entre os grupos?
+
+A taxa de resultados iguais a zero, em ambos os grupos está próximo de 18% e 19%, sendo o grupo B o que mais contém resultados iguais a zero, sendo a diferença para o grupo A extremamente pequena.
 
 ```{r}
 
@@ -194,7 +203,8 @@ total_results_porGrupo = projeto %>%
 total_results_porGrupo %>%
     filter(results == 0) %>%
     ggplot(aes(x = group, y = taxaDeResultado, fill = group)) + 
-    geom_col(width = .5)
+    geom_col(width = .5) +
+    labs(xlab("Grupo"), ylab("Taxa de resultados iguais a zero (%)"))
     
 ```
 
@@ -212,13 +222,17 @@ funcao_results_zero <- function(dados, indices) {
     return(taxa_results_zero)
 }
 
-bootstrap_results_zero <- boot(data = projeto, statistic = funcao_results_zero, R = 1000)
+bootstrap_results_zero <- boot(data = projeto, statistic = funcao_results_zero, R = 2000)
 
 boot.ci(boot.out = bootstrap_results_zero, conf = 0.95, type = "basic")
 
 ```
 
+Sendo assim, afirmamos que a taxa de resultados iguais a zero, de modo geral, está entre 18,16% e 18,74%.
+
 #### testa o que acontece se para a pergunta 1, em vez de comparar o grupo A com o grupo B (um teste A/B), você compara metade das sessões do grupo A (escolhida aleatoriamente) com outra metade das sessões do mesmo grupo (um teste A/A).
+
+Relembrando que de modo geral, a média da taxa de cliques, na questão 1, ficou entre 28,46% e 29,24%. Já para o teste A/A abaixo, a taxa média de cliques das amostras ficou entre 34,40% e 35,46% com 95% de confiança.
 
 ```{r}
 grupoA = projeto %>%
@@ -239,7 +253,7 @@ funcao_num_clicks <- function(dados, indices) {
     return(mean_num_clicks)
 }
 
-bootstrap_num_clicks <- boot(data = amostra_grupoA, statistic = funcao_num_clicks, R = 1000)
+bootstrap_num_clicks <- boot(data = amostra_grupoA, statistic = funcao_num_clicks, R = 2000)
 
 boot.ci(boot.out = bootstrap_num_clicks, conf = 0.95, type = "basic")
 
