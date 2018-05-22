@@ -1,6 +1,6 @@
 # FPCC2 - Labs
 
-[Lab 1 - Checkpoint 3](http://rpubs.com/DanielMarques/lab3_checkpoint1)
+[Lab 3 - Checkpoint 1](http://rpubs.com/DanielMarques/lab3_checkpoint1)
 
 # Sessões, buscas e navegação na wikimedia
 
